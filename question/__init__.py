@@ -4,7 +4,7 @@ import azure.functions as func
 from langchain.vectorstores import Chroma, Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
 import pinecone
-from langchain.llms import OpenAI
+from langchain.llms import AzureOpenAI
 from langchain.chains.question_answering import load_qa_chain
 import os
 
@@ -15,7 +15,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
     query = req.params.get('query')
-    embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    embeddings = OpenAIEmbeddings(openai_api_key=os.environ["OPENAI_API_KEY"], model="SearchQueryEmbedding")
 
     # initialize pinecone
     pinecone.init(
@@ -23,11 +23,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         environment=PINECONE_API_ENV # next to api key in console
     )
     #provide the index name, where you hv already uploaded the indexes.. index creation is a separate process.
-    index_name = "langchain-openai"
-    namespace = "book"
+    index_name = "merged-docs"
+    namespace = "merged-docs-ns"
 
     docsearch = Pinecone.from_existing_index(index_name, embeddings, namespace=namespace)    
-    llm = OpenAI(temperature=0, openai_api_key=OPENAI_API_KEY)
+    llm = AzureOpenAI(deployment_name="SentimentAnalysis", model_name="text-davinci-003")
     chain = load_qa_chain(llm, chain_type="stuff")
     docs = docsearch.similarity_search(query,
     include_metadata=True, namespace=namespace)
